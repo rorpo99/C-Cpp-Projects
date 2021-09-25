@@ -1,17 +1,166 @@
 #pragma once
-#include <exception>
+#include <iterator>
+#include <stdexcept>
+
+
+template <typename T>
+class CircularBuffer;
+
+template <typename T>
+class LoopIterator { 
+public:
+
+	using iterator_category = std::random_access_iterator_tag;
+	using value_type = T;
+	using difference_type = int;
+	using pointer = T*;
+	using reference = T&;
+
+	LoopIterator(T* p, T* cb_data, int cb_capacity) : 
+		p(p), 
+		cb_data(cb_data), 
+		cb_capacity(cb_capacity) {};
+
+	LoopIterator& operator=(const LoopIterator& other) {
+		p = other.p;
+		cb_data = other.cb_data;
+		cb_capacity = other.cb_capacity;
+		return *this;
+	}
+
+
+	bool operator==(LoopIterator const& other) const {
+		return p == other.p;
+	};
+
+	bool operator!=(LoopIterator const& other) const {
+		return !(*this == other);
+	};
+
+	bool operator<(LoopIterator const& other) const {
+		return p < other.p;
+	};
+
+	bool operator<=(LoopIterator const& other) const {
+		return *this < other ||  *this == other;
+	};
+
+	bool operator>(LoopIterator const& other) const {
+		return !(*this <= other);
+	};
+
+	bool operator>=(LoopIterator const& other) const {
+		return !(*this < other);
+	};
+
+	reference operator*() const {
+		return *p;
+	};
+
+	LoopIterator& operator++() {
+		++p;
+		if (p == cb_data + cb_capacity) {
+			p = cb_data;
+		}
+		return *this;
+	};
+
+	LoopIterator& operator--() {
+		if (p == cb_data) {
+			p = cb_data + cb_capacity - 1;
+		}
+		--p;
+		return *this;
+	};
+
+	difference_type operator-(LoopIterator const& other) const {
+		if (*this < other)
+			return (p + cb_capacity - other.p);
+		return p - other.p;
+	}
+
+	LoopIterator& operator+=(int n) {
+		n = n % cb_capacity;
+		if (p + n < cb_data + cb_capacity) {
+			p = p + n;
+		}
+		else {
+			p = p + n - cb_capacity;
+		}
+		return *this;
+	}
+
+	LoopIterator& operator-=(int n) {
+		n = n % cb_capacity;
+		if (p - n < cb_data) {
+			p = p - n + cb_capacity;
+		}
+		else {
+			p = p - n;
+		}
+		return *this;
+	}
+
+private:
+	T* p;
+	T* cb_data;
+	int cb_capacity;
+};
+
+template <typename T>
+LoopIterator<T> operator+(const LoopIterator<T>& element, int n) {
+	LoopIterator<T> result = element;
+	result += n;
+	return result;
+}
+
+template <typename T>
+LoopIterator<T> operator+(int n, const LoopIterator<T>& element) {
+	LoopIterator<T> result = element;
+	result += n;
+	return result;
+}
+
+template <typename T>
+LoopIterator<T> operator-(const LoopIterator<T>& element, int n) {
+	LoopIterator<T> result = element;
+	result -= n;
+	return result;
+}
 
 template <typename T>
 class CircularBuffer {
+	friend class LoopIterator<T>;
+	
 private:
-	size_t size;
-	mutable int begin_;
-	mutable int end_;
-	bool isEmpty;
-	mutable T* data;
+	int size = 0;
+	int capacity;
+	int begin_ = 0;
+	T* data;
+
 public:
-	CircularBuffer(size_t size) : size(size), begin_(0), end_(0), isEmpty(true) {
-		data = new T[size];
+	typedef LoopIterator<T> iterator;
+	CircularBuffer(int new_capacity) : capacity(new_capacity + 1) {
+		data = new T[capacity];
+	}
+
+	~CircularBuffer() {
+		delete[] data;
+	}
+
+	CircularBuffer& operator=(const CircularBuffer& other) {
+		if (this == &other) {
+			return *this;
+		}
+		delete[] data;
+		size = other.size;
+		capacity = other.capacity;
+		begin_ = other.begin_;
+		data = new T[capacity];
+		for (int i = 0; i < capacity; ++i) {
+			data[i] = other.data[i];
+		}
+		return *this;
 	}
 
 	T first() {
@@ -19,81 +168,82 @@ public:
 	}
 
 	T last() {
-		return data[end_];
+		return data[(begin_ + size - 1) % capacity];
 	}
 
 	T operator [] (int i) const {
-		if (isEmpty || i > abs(begin_ - end_)) {
-			throw std::exception("out of range");
+		if (size == 0 || i >= size) {
+			throw std::out_of_range("");
 		}
-		return data[(begin_ + i) % size];
+		return data[(begin_ + i) % capacity];
 	}
 
 	T& operator [] (int i) {
-		if (isEmpty || i > abs(begin_ - end_)) {
-			throw std::exception("out of range");
+		if (size == 0 || i >= size) {
+			throw std::out_of_range("");
 		}
-		return data[(begin_ + i) % size];
+		return data[(begin_ + i) % capacity];
 	}
 
 	void addFirst(T value) {
-		if (isEmpty) {
+		if (!size) {
 			data[0] = value;
-			isEmpty = false;
 		}
 		else {
-			begin_ = (begin_ - 1 + size) % size;
+			begin_ = (begin_ - 1 + capacity) % capacity;
 			data[begin_] = value;
+		}
+		++size;
+		if (size == capacity) {
+			--size;
 		}
 	}
 
 	void addLast(T value) {
-		if (isEmpty) {
+		if (!size) {
 			data[0] = value;
-			isEmpty = false;
 		}
 		else {
-			end_ = (end_ + 1) % size;
-			data[end_] = value;
+			data[(begin_ + size) % capacity] = value;
+		}
+		++size;
+		if (size == capacity) {
+			--size;
 		}
 	}
 
 	void delFirst() {
-		if (begin_ == end_) {
-			isEmpty = true;
+		if (size == 1) {
 			begin_ = 0;
-			end_ = 0;
 		}
-		begin_ = (begin_ + 1) % size;
+		else {
+			begin_ = (begin_ + 1) % capacity;
+		}
+		--size;
 	}
 
 	void delLast() {
-		if (begin_ == end_) {
-			isEmpty = true;
+		if (size == 1) {
 			begin_ = 0;
-			end_ = 0;
 		}
-		end_ = (end_ - 1 + size) % size;
+		--size;
 	}
 
-	void changeCapacity(size_t new_size) {
-		T* new_data = new T[new_size];
-		for (size_t i = 0; i < size; ++i) {
+	void changeCapacity(int new_capacity) {
+		T* new_data = new T[new_capacity + 1];
+		for (int i = 0; i < capacity; ++i) {
 			new_data[i] = data[i];
 		}
 		delete[] data;
-		size = new_size;
+		capacity = new_capacity + 1;
 		data = new_data;
 	}
 
-	T* begin() const {
-		//begin_ = 0;
-		return data;
+	iterator begin() const {
+		return iterator(data + begin_, data, capacity);
 	}
 
-	T* end() const {
-		//end_ = size - 1;
-		return data + size;
+	iterator end() const {
+		return iterator(data + (begin_ + size) % capacity, data, capacity);
 	}
 };
-
