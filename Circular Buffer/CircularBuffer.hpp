@@ -1,4 +1,5 @@
 #pragma once
+
 #include <iterator>
 #include <stdexcept>
 
@@ -7,19 +8,14 @@ template <typename T>
 class CircularBuffer;
 
 template <typename T>
-class LoopIterator { 
+class LoopIterator {
+	friend class CircularBuffer<T>;
 public:
-
 	using iterator_category = std::random_access_iterator_tag;
 	using value_type = T;
-	using difference_type = int;
+	using difference_type = std::ptrdiff_t;
 	using pointer = T*;
 	using reference = T&;
-
-	LoopIterator(T* p, T* cb_data, int cb_capacity) : 
-		p(p), 
-		cb_data(cb_data), 
-		cb_capacity(cb_capacity) {};
 
 	LoopIterator& operator=(const LoopIterator& other) {
 		p = other.p;
@@ -28,42 +24,41 @@ public:
 		return *this;
 	}
 
-
 	bool operator==(LoopIterator const& other) const {
 		return p == other.p;
-	};
+	}
 
 	bool operator!=(LoopIterator const& other) const {
-		return !(*this == other);
-	};
+		return !(*this == other); /// p != other.p;
+	}
 
 	bool operator<(LoopIterator const& other) const {
-		return p < other.p;
-	};
+		return p < other.p; 
+	}
 
 	bool operator<=(LoopIterator const& other) const {
 		return *this < other ||  *this == other;
-	};
+	}
 
 	bool operator>(LoopIterator const& other) const {
 		return !(*this <= other);
-	};
+	}
 
 	bool operator>=(LoopIterator const& other) const {
 		return !(*this < other);
-	};
+	}
 
 	reference operator*() const {
 		return *p;
-	};
-
+	}
+	/// Node: post inc, post dec
 	LoopIterator& operator++() {
 		++p;
 		if (p == cb_data + cb_capacity) {
 			p = cb_data;
 		}
 		return *this;
-	};
+	}
 
 	LoopIterator& operator--() {
 		if (p == cb_data) {
@@ -71,7 +66,7 @@ public:
 		}
 		--p;
 		return *this;
-	};
+	}
 
 	difference_type operator-(LoopIterator const& other) const {
 		if (*this < other)
@@ -102,6 +97,11 @@ public:
 	}
 
 private:
+	LoopIterator(T* p, T* cb_data, int cb_capacity) :
+		p(p),
+		cb_data(cb_data),
+		cb_capacity(cb_capacity) {}
+
 	T* p;
 	T* cb_data;
 	int cb_capacity;
@@ -109,13 +109,6 @@ private:
 
 template <typename T>
 LoopIterator<T> operator+(const LoopIterator<T>& element, int n) {
-	LoopIterator<T> result = element;
-	result += n;
-	return result;
-}
-
-template <typename T>
-LoopIterator<T> operator+(int n, const LoopIterator<T>& element) {
 	LoopIterator<T> result = element;
 	result += n;
 	return result;
@@ -133,14 +126,15 @@ class CircularBuffer {
 	friend class LoopIterator<T>;
 	
 private:
-	int size = 0;
-	int capacity;
+	size_t size = 0;
+	size_t capacity;
 	int begin_ = 0;
 	T* data;
 
 public:
-	typedef LoopIterator<T> iterator;
-	CircularBuffer(int new_capacity) : capacity(new_capacity + 1) {
+
+	using iterator = LoopIterator<T>;
+	CircularBuffer(size_t new_capacity) : capacity(new_capacity + 1) {
 		data = new T[capacity];
 	}
 
@@ -149,43 +143,46 @@ public:
 	}
 
 	CircularBuffer& operator=(const CircularBuffer& other) {
-		if (this == &other) {
-			return *this;
+		auto ptr = new T[capacity];
+		std::swap(size, other.size);
+		std::swap(capacity, other.capacity);
+		std::swap(begin_, other.begin_);
+		for (size_t i = 0; i < capacity; ++i) {
+			try {
+				ptr[i] = other.data[i];
+			} catch(...) {
+				delete[] ptr;
+				throw;
+			}
 		}
 		delete[] data;
-		size = other.size;
-		capacity = other.capacity;
-		begin_ = other.begin_;
-		data = new T[capacity];
-		for (int i = 0; i < capacity; ++i) {
-			data[i] = other.data[i];
-		}
+		data = ptr;
 		return *this;
 	}
 
-	T first() {
+	T first() const {
 		return data[begin_];
 	}
 
-	T last() {
+	T last() const {
 		return data[(begin_ + size - 1) % capacity];
 	}
 
-	T operator [] (int i) const {
+	T operator [] (size_t i) const {
 		if (size == 0 || i >= size) {
 			throw std::out_of_range("");
 		}
 		return data[(begin_ + i) % capacity];
 	}
 
-	T& operator [] (int i) {
+	T& operator [] (size_t i) {
 		if (size == 0 || i >= size) {
 			throw std::out_of_range("");
 		}
 		return data[(begin_ + i) % capacity];
 	}
 
-	void addFirst(T value) {
+	void addFirst(const T & value) {
 		if (!size) {
 			data[0] = value;
 		}
@@ -199,7 +196,7 @@ public:
 		}
 	}
 
-	void addLast(T value) {
+	void addLast(const T & value) {
 		if (!size) {
 			data[0] = value;
 		}
@@ -229,10 +226,15 @@ public:
 		--size;
 	}
 
-	void changeCapacity(int new_capacity) {
+	/// note make private
+	void changeCapacity(size_t new_capacity) {
 		T* new_data = new T[new_capacity + 1];
 		for (int i = 0; i < capacity; ++i) {
-			new_data[i] = data[i];
+			try {
+				new_data[i] = data[i];
+			} catch(...) {
+				delete[] new_data;
+			}
 		}
 		delete[] data;
 		capacity = new_capacity + 1;
