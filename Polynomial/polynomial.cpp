@@ -4,7 +4,6 @@
 
 #include "polynomial.h"
 
-//todo copy new coefs - fixed
 Polynomial::Polynomial(int new_min_power, int new_max_power, int* new_coefficients)
 	: min_power(new_min_power), max_power(new_max_power), size(max_power - min_power + 1) {
 	coefficients = new int[size];
