@@ -10,10 +10,12 @@ private:
 	int max_power = 0;
 	size_t size = 0;
 	int* coefficients = nullptr;
+    Polynomial remove_zeros();
 public:
 	Polynomial() = default;
 	Polynomial(int, int, int*);
 	Polynomial(const Polynomial&);
+    Polynomial(Polynomial&&);
 	~Polynomial();
 	Polynomial& operator=(const Polynomial&);
 	int get_min_power() const;
@@ -25,7 +27,6 @@ public:
 	const Polynomial operator-() const;
 	Polynomial& operator+=(const Polynomial&);
 	Polynomial& operator-=(const Polynomial&);
-	Polynomial remove_zeros();
 	Polynomial& operator/=(int);
 	Polynomial& operator*=(int);
 	Polynomial& operator*=(const Polynomial&);

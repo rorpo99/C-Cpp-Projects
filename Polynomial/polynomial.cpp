@@ -10,8 +10,10 @@ Polynomial::Polynomial(int new_min_power, int new_max_power, int* new_coefficien
 	for (size_t i = 0; i < size; ++i) {
 		coefficients[i] = new_coefficients[i];
 	}
-	this->remove_zeros();
+	remove_zeros();
 }
+
+Polynomial::Polynomial(Polynomial&&); ///move constructor
 
 Polynomial::Polynomial(const Polynomial& other)
 	: min_power(other.min_power), max_power(other.max_power), size(other.size), coefficients(new int[size]) {
@@ -101,6 +103,7 @@ const Polynomial Polynomial::operator-() const {
 	return tmp;
 }
 
+///private?
 /// make strong exception garantii
 Polynomial Polynomial::remove_zeros() {
 	std::vector <int> coefs(size);
@@ -208,7 +211,7 @@ std::ostream& operator<<(std::ostream& out, const Polynomial& p) {
 	return out;
 }
 
-//todo  copy-paste of it - fixed
+///private?
 int* coefs_of_polynomial_sum_or_dif(const Polynomial& lh, const Polynomial& rh, char sign) {  //funcion where polynomial lh always has the minimal power 
 	int mind = std::min(lh.get_min_power(), rh.get_min_power());
 	int maxd = std::max(lh.get_max_power(), rh.get_max_power());
@@ -239,7 +242,7 @@ Polynomial operator+(const Polynomial& lh, const Polynomial& rh) {
 	return result;
 }
 
-///Make less copy code
+///I think, that this function is copy of operator-=. What about creating abstract operator
 Polynomial& Polynomial::operator+=(const Polynomial& p) {
 	Polynomial empty_p;
 	if (*this == empty_p) {
@@ -260,7 +263,7 @@ Polynomial& Polynomial::operator+=(const Polynomial& p) {
 	min_power = mind;
 	max_power = maxd;
 	size = max_power - min_power + 1;
-	this->remove_zeros();
+	remove_zeros();
 	return *this;
 }
 
@@ -290,7 +293,7 @@ Polynomial& Polynomial::operator-=(const Polynomial& p) {
 	min_power = mind;
 	max_power = maxd;
 	size = max_power - min_power + 1;
-	this->remove_zeros();
+	remove_zeros();
 	return *this;
 }
 
