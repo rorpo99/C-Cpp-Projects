@@ -29,10 +29,10 @@ public:
 	}
 
 	bool operator!=(LoopIterator const& other) const {
-		return !(*this == other); /// p != other.p;
+		return p != other.p;
 	}
 
-	bool operator<(LoopIterator const& other) const {
+	bool operator<(LoopIterator const& other) const { ///this result might be unspecified.
 		return p < other.p; 
 	}
 
