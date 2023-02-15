@@ -101,10 +101,12 @@ int** read_files_pixels(struct RGB** pixels, int width, int height) {
 }
 
 int main(int argc, char* argv[]) {
+
 	char* file_name;
 	char* output_directory;
 	int i, j, k;
 	int max_iter = 100, dump_freq = 1;
+	
 	for (i = 1; i < argc; i += 2) {
 		if (strcmp(argv[i], "--input") == 0)
 			file_name = argv[i + 1];
@@ -117,21 +119,25 @@ int main(int argc, char* argv[]) {
 		if (strcmp(argv[i], "--dump_freq") == 0)
 			sscanf(argv[i + 1], "%d", &dump_freq);
 	}
+	
 	FILE* file = fopen(file_name, "r");
-	//Считывание информации из хедера
+	
 	union FileHeader fheader;
 	fread(fheader.buffer, sizeof(char), 14, file);
+	
 	union InfoHeader iheader;
 	fread(iheader.buffer, sizeof(char), 40, file);
+	
 	unsigned int width = iheader.BITMAPINFOHEADER.width;
 	unsigned int height = iheader.BITMAPINFOHEADER.height;
-	//Создание массива пикселей
 	struct RGB** pixelscolors = pixelArray(file, width, height);
 	int** pixels = read_files_pixels(pixelscolors, width, height);
 	int** new_pixels = read_files_pixels(pixelscolors, width, height);
+	
 	fclose(file);
-	//Игра
+	
 	int up, left, down, right, cnt;
+	
 	for (k = 0; k < max_iter; k++) {
 		for (i = 0; i < height; i++) {
 			up = i - 1;
@@ -166,7 +172,7 @@ int main(int argc, char* argv[]) {
 		for (i = 0; i < height; i++)
 			for (j = 0; j < width; j++)
 				pixels[i][j] = new_pixels[i][j];
-		//Создание новых поколений (bmp файлов)
+
 		if (k % dump_freq == 0) {
 			char s[50];
 			char way[100];
