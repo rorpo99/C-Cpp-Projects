@@ -130,6 +130,20 @@ private:
 	size_t capacity;
 	int begin_ = 0;
 	T* data;
+	
+	void changeCapacity(size_t new_capacity) {
+		T* new_data = new T[new_capacity + 1];
+		for (int i = 0; i < capacity; ++i) {
+			try {
+				new_data[i] = data[i];
+			} catch(...) {
+				delete[] new_data;
+			}
+		}
+		delete[] data;
+		capacity = new_capacity + 1;
+		data = new_data;
+	}
 
 public:
 
@@ -224,21 +238,6 @@ public:
 			begin_ = 0;
 		}
 		--size;
-	}
-
-	/// note make private
-	void changeCapacity(size_t new_capacity) {
-		T* new_data = new T[new_capacity + 1];
-		for (int i = 0; i < capacity; ++i) {
-			try {
-				new_data[i] = data[i];
-			} catch(...) {
-				delete[] new_data;
-			}
-		}
-		delete[] data;
-		capacity = new_capacity + 1;
-		data = new_data;
 	}
 
 	iterator begin() const {
